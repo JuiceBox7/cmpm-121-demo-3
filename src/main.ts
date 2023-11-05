@@ -70,6 +70,7 @@ function makePit(i: number, j: number) {
       points++;
       updateStatusPanel();
     });
+
     const deposit = container.querySelector<HTMLButtonElement>("#deposit")!;
     deposit.addEventListener("click", () => {
       if (points > 0) {
