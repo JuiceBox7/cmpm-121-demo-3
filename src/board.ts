@@ -3,7 +3,7 @@ import luck from "./luck";
 
 const PIT_SPAWN_PROBABILITY = 0.1;
 
-interface Cell {
+export interface Cell {
   readonly i: number;
   readonly j: number;
 }

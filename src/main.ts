@@ -15,11 +15,11 @@ const NULL_ISLAND = leaflet.latLng({
   lng: 0,
 });
 
-// interface Token {
-//   i: number;
-//   j: number;
-//   serial: number | null;
-// }
+interface Token {
+  i: number;
+  j: number;
+  serial: number | null;
+}
 
 const GAMEPLAY_ZOOM_LEVEL = 19;
 const TILE_DEGREES = 1e-4;
@@ -48,15 +48,15 @@ const playerMarker = leaflet.marker(NULL_ISLAND);
 playerMarker.bindTooltip("That's you!");
 playerMarker.addTo(map);
 
-// let cache: Token[] = [];
 let points = 0;
 const statusPanel = document.querySelector<HTMLDivElement>("#statusPanel")!;
 statusPanel.innerHTML = "No points yet...";
 
 function makePit(i: number, j: number) {
+  let cache: Token[] = [];
   const bounds = board.getCellBounds(map.getCenter(), { i, j });
   const pit = leaflet.rectangle(bounds) as leaflet.Layer;
-  // let count;
+  let serial = 0;
 
   pit.bindPopup(() => {
     let value = Math.floor(luck([i, j, "initialValue"].toString()) * 100);
@@ -71,7 +71,13 @@ function makePit(i: number, j: number) {
       container.querySelector<HTMLSpanElement>("#value")!.innerHTML =
         value.toString();
       points++;
-      // const toAddToken: Token = updateStatusPanel();
+      if (cache.length > 0) {
+        serial++;
+      }
+      const toAdd: Token = { i, j, serial };
+      cache.push(toAdd);
+      console.log(toAdd);
+      updateStatusPanel();
     });
 
     const deposit = container.querySelector<HTMLButtonElement>("#deposit")!;
