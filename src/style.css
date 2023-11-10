@@ -43,6 +43,10 @@ h1 {
   padding: 1rem;
 }
 
+#tokenMsg {
+  padding: 1rem;
+}
+
 #map {
   width: 100%;
   height: 100vh;

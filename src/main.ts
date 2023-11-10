@@ -52,6 +52,9 @@ let points = 0;
 const statusPanel = document.querySelector<HTMLDivElement>("#statusPanel")!;
 statusPanel.innerHTML = "No points yet...";
 
+const tokenMsg = document.querySelector<HTMLDivElement>("#tokenMsg")!;
+tokenMsg.innerHTML = "";
+
 function makePit(i: number, j: number) {
   let cache: Token[] = [];
   const bounds = board.getCellBounds(map.getCenter(), { i, j });
@@ -76,6 +79,7 @@ function makePit(i: number, j: number) {
       }
       const toAdd: Token = { i, j, serial };
       cache.push(toAdd);
+      addTokenMsg(toAdd);
       console.log(toAdd);
       updateStatusPanel();
     });
@@ -89,6 +93,10 @@ function makePit(i: number, j: number) {
         container.querySelector<HTMLSpanElement>("#value")!.innerHTML =
           value.toString();
       }
+      if (cache.length > 0) {
+        const depositedToken = cache.pop();
+        depositTokenMsg(depositedToken!);
+      }
     });
     return container;
   });
@@ -98,6 +106,14 @@ function makePit(i: number, j: number) {
 function updateStatusPanel() {
   statusPanel.innerHTML =
     points < 1 ? "No points yet..." : `${points} points accumulated`;
+}
+
+function addTokenMsg(token: Token) {
+  tokenMsg.innerHTML = `Token collected: ${token.i}:${token.j}#${token.serial}`;
+}
+
+function depositTokenMsg(token: Token) {
+  tokenMsg.innerHTML = `Token deposited: ${token.i}:${token.j}#${token.serial}`;
 }
 
 function makeCells(cells: Array<any>) {
