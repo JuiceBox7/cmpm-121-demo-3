@@ -3,16 +3,27 @@ import "./style.css";
 import leaflet from "leaflet";
 import luck from "./luck";
 import "./leafletWorkaround";
+import { Board } from "./board";
 
 const MERRILL_CLASSROOM = leaflet.latLng({
   lat: 36.9995,
   lng: -122.0533,
 });
 
+const NULL_ISLAND = leaflet.latLng({
+  lat: 0,
+  lng: 0,
+});
+
+// interface Token {
+//   i: number;
+//   j: number;
+//   serial: number | null;
+// }
+
 const GAMEPLAY_ZOOM_LEVEL = 19;
 const TILE_DEGREES = 1e-4;
 const NEIGHBORHOOD_SIZE = 8;
-const PIT_SPAWN_PROBABILITY = 0.1;
 
 const mapContainer = document.querySelector<HTMLElement>("#map")!;
 
@@ -33,27 +44,19 @@ leaflet
   })
   .addTo(map);
 
-const playerMarker = leaflet.marker(MERRILL_CLASSROOM);
+const playerMarker = leaflet.marker(NULL_ISLAND);
 playerMarker.bindTooltip("That's you!");
 playerMarker.addTo(map);
 
+// let cache: Token[] = [];
 let points = 0;
 const statusPanel = document.querySelector<HTMLDivElement>("#statusPanel")!;
 statusPanel.innerHTML = "No points yet...";
 
 function makePit(i: number, j: number) {
-  const bounds = leaflet.latLngBounds([
-    [
-      MERRILL_CLASSROOM.lat + i * TILE_DEGREES,
-      MERRILL_CLASSROOM.lng + j * TILE_DEGREES,
-    ],
-    [
-      MERRILL_CLASSROOM.lat + (i + 1) * TILE_DEGREES,
-      MERRILL_CLASSROOM.lng + (j + 1) * TILE_DEGREES,
-    ],
-  ]);
-
+  const bounds = board.getCellBounds(map.getCenter(), { i, j });
   const pit = leaflet.rectangle(bounds) as leaflet.Layer;
+  // let count;
 
   pit.bindPopup(() => {
     let value = Math.floor(luck([i, j, "initialValue"].toString()) * 100);
@@ -68,7 +71,7 @@ function makePit(i: number, j: number) {
       container.querySelector<HTMLSpanElement>("#value")!.innerHTML =
         value.toString();
       points++;
-      updateStatusPanel();
+      // const toAddToken: Token = updateStatusPanel();
     });
 
     const deposit = container.querySelector<HTMLButtonElement>("#deposit")!;
@@ -91,10 +94,12 @@ function updateStatusPanel() {
     points < 1 ? "No points yet..." : `${points} points accumulated`;
 }
 
-for (let i = -NEIGHBORHOOD_SIZE; i < NEIGHBORHOOD_SIZE; i++) {
-  for (let j = -NEIGHBORHOOD_SIZE; j < NEIGHBORHOOD_SIZE; j++) {
-    if (luck([i, j].toString()) < PIT_SPAWN_PROBABILITY) {
-      makePit(i, j);
-    }
-  }
+function makeCells(cells: Array<any>) {
+  cells.forEach((cell) => {
+    makePit(cell.i, cell.j);
+  });
 }
+
+const board = new Board(TILE_DEGREES, NEIGHBORHOOD_SIZE);
+const cells = board.getCellsNearPoint(MERRILL_CLASSROOM);
+makeCells(cells);
