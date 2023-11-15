@@ -71,3 +71,25 @@ export class Board {
     return resultCells;
   }
 }
+
+export interface Memento<T> {
+  toMemento(): T;
+  fromMemento(momento: T): void;
+}
+
+export class Geocache implements Memento<string> {
+  cell: Cell;
+  numCoins: number;
+  constructor(cell: Cell) {
+    this.cell = cell;
+    this.numCoins = 0;
+  }
+
+  toMemento() {
+    return this.numCoins.toString();
+  }
+
+  fromMemento(memento: string) {
+    this.numCoins = parseInt(memento);
+  }
+}
