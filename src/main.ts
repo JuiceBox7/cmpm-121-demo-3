@@ -5,7 +5,7 @@ import luck from "./luck";
 import "./leafletWorkaround";
 import { Board, Cell, Geocache } from "./board";
 
-// ----- Macros -----
+// --- Macros ---
 
 const MERRILL_CLASSROOM = leaflet.latLng({
   lat: 36.9995,
@@ -15,6 +15,8 @@ const MERRILL_CLASSROOM = leaflet.latLng({
 const GAMEPLAY_ZOOM_LEVEL = 19;
 const TILE_DEGREES = 1e-4;
 const NEIGHBORHOOD_SIZE = 8;
+const ADD = "add";
+const DEPOSIT = "deposit";
 const GAME_STATE_CHANGED = "game-state-changed";
 const NORTH = "north";
 const EAST = "east";
@@ -60,15 +62,13 @@ interface Token {
   serial: number;
 }
 
-// --- HTML Div Elements ---
+// --- HTML Elements ---
 
 const statusPanel = document.querySelector<HTMLDivElement>("#statusPanel")!;
 statusPanel.innerHTML = "No points yet...";
 
 const tokenMsg = document.querySelector<HTMLDivElement>("#tokenMsg")!;
 tokenMsg.innerHTML = "";
-
-// --- Arrows ---
 
 const directions: string[] = ["#north", "#east", "#south", "#west"];
 makeArrowButtons(directions);
@@ -79,7 +79,6 @@ let points = 0;
 const tokenCache: Token[] = [];
 const mementos: Map<Cell, string> = new Map();
 const cacheMap: Map<Cell, leaflet.Layer> = new Map();
-
 const board = new Board(TILE_DEGREES, NEIGHBORHOOD_SIZE);
 
 // --- Event Listeners ---
@@ -89,15 +88,12 @@ window.addEventListener(GAME_STATE_CHANGED, () => {
   spawnGeocachesNearPlayer();
 });
 
-// --- Event Dispatches ---
-
 window.dispatchEvent(new Event(GAME_STATE_CHANGED));
 
 // --- Functions ---
 
 function spawnGeocache(cell: Cell) {
   let geocache = new Geocache(cell);
-
   geocache.numCoins = Math.floor(
     luck([cell.i, cell.j, "initialValue"].toString()) * 20
   );
@@ -134,11 +130,11 @@ function updateStatusPanel() {
 
 function updateTokenMsg(token: Token, msg: string) {
   switch (msg) {
-    case "add":
+    case ADD:
       tokenMsg.innerHTML = `Token collected: ${token.cell.i}:${token.cell.j}#${token.serial}`;
       break;
 
-    case "deposit":
+    case DEPOSIT:
       tokenMsg.innerHTML = `Token deposited: ${token.cell.i}:${token.cell.j}#${token.serial}`;
       break;
   }
@@ -202,7 +198,7 @@ function createCollectButton(
     const cell = geocache.cell;
     const toAdd: Token = { cell, serial };
     tokenCache.push(toAdd);
-    updateTokenMsg(toAdd, "add");
+    updateTokenMsg(toAdd, ADD);
     updateStatusPanel();
     e.stopPropagation();
     button.remove();
@@ -220,7 +216,7 @@ function createDepositButton(container: HTMLDivElement, geocache: Geocache) {
       container.querySelector<HTMLSpanElement>("#value")!.innerHTML =
         geocache.toMemento();
       const depositedToken = tokenCache.pop()!;
-      updateTokenMsg(depositedToken, "deposit");
+      updateTokenMsg(depositedToken, DEPOSIT);
       createCollectButton(container, depositedToken.serial, geocache);
     } else tokenMsg.innerHTML = "No tokens to deposit";
   });
