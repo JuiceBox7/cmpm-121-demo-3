@@ -30,38 +30,33 @@ export class Board {
   }
 
   getCellForPoint(point: leaflet.LatLng): Cell {
-    const i = point.lat;
-    const j = point.lng;
+    const i = Math.round(point.lat / this.tileWidth);
+    const j = Math.round(point.lng / this.tileWidth);
     return this.getCanonicalCell({ i, j });
   }
 
-  getCellBounds(center: leaflet.LatLng, cell: Cell): leaflet.LatLngBounds {
+  getCellBounds(cell: Cell): leaflet.LatLngBounds {
     return leaflet.latLngBounds([
-      [
-        center.lat + cell.i * this.tileWidth,
-        center.lng + cell.j * this.tileWidth,
-      ],
-      [
-        center.lat + (cell.i + 1) * this.tileWidth,
-        center.lng + (cell.j + 1) * this.tileWidth,
-      ],
+      [cell.i * this.tileWidth, cell.j * this.tileWidth],
+      [(cell.i + 1) * this.tileWidth, (cell.j + 1) * this.tileWidth],
     ]);
   }
 
   getCellsNearPoint(point: leaflet.LatLng): Cell[] {
     const resultCells: Cell[] = [];
     const originCell = this.getCellForPoint(point);
-    resultCells.push(originCell);
     for (
-      let i = -this.tileVisibilityRadius;
-      i < this.tileVisibilityRadius;
-      i++
+      let iShift = -this.tileVisibilityRadius;
+      iShift < this.tileVisibilityRadius;
+      iShift++
     ) {
       for (
-        let j = -this.tileVisibilityRadius;
-        j < this.tileVisibilityRadius;
-        j++
+        let jShift = -this.tileVisibilityRadius;
+        jShift < this.tileVisibilityRadius;
+        jShift++
       ) {
+        const i = originCell.i + iShift;
+        const j = originCell.j + jShift;
         if (luck([i, j].toString()) < PIT_SPAWN_PROBABILITY) {
           const toAdd = this.getCanonicalCell({ i, j });
           resultCells.push(toAdd);
@@ -72,12 +67,7 @@ export class Board {
   }
 }
 
-export interface Memento<T> {
-  toMemento(): T;
-  fromMemento(momento: T): void;
-}
-
-export class Geocache implements Memento<string> {
+export class Geocache {
   cell: Cell;
   numCoins: number;
   constructor(cell: Cell) {
