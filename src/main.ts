@@ -5,7 +5,7 @@ import luck from "./luck";
 import "./leafletWorkaround";
 import { Board, Cell, Geocache } from "./board";
 
-// --- Macros ---
+// ----- Macros -----
 
 const MERRILL_CLASSROOM = leaflet.latLng({
   lat: 36.9995,
@@ -16,11 +16,20 @@ const GAMEPLAY_ZOOM_LEVEL = 19;
 const TILE_DEGREES = 1e-4;
 const NEIGHBORHOOD_SIZE = 8;
 const GAME_STATE_CHANGED = "game-state-changed";
+const NORTH = "north";
+const EAST = "east";
+const SOUTH = "south";
+const WEST = "west";
+const DIRECTIONS: { [id: string]: string } = {
+  "#north": NORTH,
+  "#east": EAST,
+  "#south": SOUTH,
+  "#west": WEST,
+};
 
 // --- Map ---
 
 const mapContainer = document.querySelector<HTMLElement>("#map")!;
-
 const map = leaflet.map(mapContainer, {
   center: MERRILL_CLASSROOM,
   zoom: GAMEPLAY_ZOOM_LEVEL,
@@ -51,9 +60,7 @@ interface Token {
   serial: number;
 }
 
-// ----- HTML Div Elements -----
-
-// --- Status and Messages ---
+// --- HTML Div Elements ---
 
 const statusPanel = document.querySelector<HTMLDivElement>("#statusPanel")!;
 statusPanel.innerHTML = "No points yet...";
@@ -63,17 +70,8 @@ tokenMsg.innerHTML = "";
 
 // --- Arrows ---
 
-const northArrow = document.querySelector<HTMLButtonElement>("#north")!;
-northArrow.addEventListener("click", () => moveMarker("north"));
-
-const eastArrow = document.querySelector<HTMLDivElement>("#east")!;
-eastArrow.addEventListener("click", () => moveMarker("east"));
-
-const southArrow = document.querySelector<HTMLDivElement>("#south")!;
-southArrow.addEventListener("click", () => moveMarker("south"));
-
-const westArrow = document.querySelector<HTMLDivElement>("#west")!;
-westArrow.addEventListener("click", () => moveMarker("west"));
+const directions: string[] = ["#north", "#east", "#south", "#west"];
+makeArrowButtons(directions);
 
 // --- Varirable and Object Declarations/Initializations ---
 
@@ -84,28 +82,20 @@ const cacheMap: Map<Cell, leaflet.Layer> = new Map();
 
 const board = new Board(TILE_DEGREES, NEIGHBORHOOD_SIZE);
 
-function spawnGeocachesNearPlayer() {
-  const cells = board.getCellsNearPoint(playerMarker.getLatLng());
-  cells.forEach((cell) => {
-    maybeSpawnGeocache(cell);
-  });
-}
-
-function despawnAllGeocaches() {
-  cacheMap.forEach((rect) => rect.remove());
-  cacheMap.clear();
-}
+// --- Event Listeners ---
 
 window.addEventListener(GAME_STATE_CHANGED, () => {
-  despawnAllGeocaches();
+  despawnGeocaches();
   spawnGeocachesNearPlayer();
 });
+
+// --- Event Dispatches ---
 
 window.dispatchEvent(new Event(GAME_STATE_CHANGED));
 
 // --- Functions ---
 
-function maybeSpawnGeocache(cell: Cell) {
+function spawnGeocache(cell: Cell) {
   let geocache = new Geocache(cell);
 
   geocache.numCoins = Math.floor(
@@ -119,29 +109,9 @@ function maybeSpawnGeocache(cell: Cell) {
 
   const bounds = board.getCellBounds(cell);
   const rect = leaflet.rectangle(bounds) as leaflet.Layer;
-
-  // --- Inner Function ---
-
-  function createCollectButton(container: HTMLDivElement): HTMLButtonElement {
-    const button = document.createElement("button");
-    button.innerHTML = "collect";
-    button.addEventListener("click", (e) => {
-      geocache.numCoins--;
-      container.querySelector<HTMLSpanElement>("#value")!.innerHTML =
-        geocache.toMemento();
-      points++;
-      const toAdd: Token = { cell, serial: 0 };
-      tokenCache.push(toAdd);
-      updateTokenMsg(toAdd, "add");
-      updateStatusPanel();
-      e.stopPropagation();
-      button.remove();
-    });
-    container.append(button);
-    return button;
-  }
-
-  // --- Inner Function ---
+  mementos.set(cell, geocache.toMemento());
+  cacheMap.set(cell, rect);
+  rect.addTo(map);
 
   rect.bindPopup(() => {
     const container = document.createElement("div");
@@ -149,28 +119,12 @@ function maybeSpawnGeocache(cell: Cell) {
     <div>There is a pit here at "${cell.i},${cell.j}". It has value <span id="value">${geocache.numCoins}</span>.</div>
     <button id="deposit">deposit</button><br>`;
 
-    for (let x = 0; x < geocache.numCoins; x++) {
-      createCollectButton(container);
+    for (let count = 0; count < geocache.numCoins; count++) {
+      createCollectButton(container, count, geocache);
     }
-
-    const deposit = container.querySelector<HTMLButtonElement>("#deposit")!;
-    deposit.addEventListener("click", () => {
-      if (tokenCache.length > 0) {
-        points--;
-        updateStatusPanel();
-        geocache.numCoins++;
-        container.querySelector<HTMLSpanElement>("#value")!.innerHTML =
-          geocache.toMemento();
-        const depositedToken = tokenCache.pop();
-        updateTokenMsg(depositedToken!, "deposit");
-        createCollectButton(container);
-      } else tokenMsg.innerHTML = "No tokens to deposit";
-    });
+    createDepositButton(container, geocache);
     return container;
   });
-  mementos.set(cell, geocache.toMemento());
-  cacheMap.set(cell, rect);
-  rect.addTo(map);
 }
 
 function updateStatusPanel() {
@@ -210,5 +164,64 @@ function moveMarker(direction: string) {
       break;
   }
   playerMarker.setLatLng(marker);
+  map.setView(marker);
   window.dispatchEvent(new Event(GAME_STATE_CHANGED));
+}
+
+function spawnGeocachesNearPlayer() {
+  const cells = board.getCellsNearPoint(playerMarker.getLatLng());
+  cells.forEach((cell) => {
+    spawnGeocache(cell);
+  });
+}
+
+function despawnGeocaches() {
+  cacheMap.forEach((rect) => rect.remove());
+  cacheMap.clear();
+}
+
+function makeArrowButtons(directions: string[]) {
+  directions.forEach((direction) => {
+    const button = document.querySelector<HTMLButtonElement>(direction)!;
+    button.addEventListener("click", () => moveMarker(DIRECTIONS[direction]));
+  });
+}
+
+function createCollectButton(
+  container: HTMLDivElement,
+  serial: number,
+  geocache: Geocache
+) {
+  const button = document.createElement("button");
+  button.innerHTML = "collect";
+  button.addEventListener("click", (e) => {
+    geocache.numCoins--;
+    container.querySelector<HTMLSpanElement>("#value")!.innerHTML =
+      geocache.toMemento();
+    points++;
+    const cell = geocache.cell;
+    const toAdd: Token = { cell, serial };
+    tokenCache.push(toAdd);
+    updateTokenMsg(toAdd, "add");
+    updateStatusPanel();
+    e.stopPropagation();
+    button.remove();
+  });
+  container.append(button);
+}
+
+function createDepositButton(container: HTMLDivElement, geocache: Geocache) {
+  const deposit = container.querySelector<HTMLButtonElement>("#deposit")!;
+  deposit.addEventListener("click", () => {
+    if (tokenCache.length > 0) {
+      points--;
+      updateStatusPanel();
+      geocache.numCoins++;
+      container.querySelector<HTMLSpanElement>("#value")!.innerHTML =
+        geocache.toMemento();
+      const depositedToken = tokenCache.pop()!;
+      updateTokenMsg(depositedToken, "deposit");
+      createCollectButton(container, depositedToken.serial, geocache);
+    } else tokenMsg.innerHTML = "No tokens to deposit";
+  });
 }
