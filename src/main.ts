@@ -73,13 +73,29 @@ tokenMsg.innerHTML = "";
 const directions: string[] = ["#north", "#east", "#south", "#west"];
 makeArrowButtons(directions);
 
+const resetBtn = document.querySelector<HTMLButtonElement>("#reset")!;
+resetBtn.addEventListener("click", () => reset());
+
+const sensorButton = document.querySelector("#sensor")!;
+sensorButton.addEventListener("click", () => {
+  navigator.geolocation.watchPosition((position) => {
+    playerMarker.setLatLng(
+      leaflet.latLng(position.coords.latitude, position.coords.longitude)
+    );
+    map.setView(playerMarker.getLatLng());
+    window.dispatchEvent(new Event(GAME_STATE_CHANGED));
+  });
+});
+
 // --- Varirable and Object Declarations/Initializations ---
 
 let points = 0;
-const tokenCache: Token[] = [];
+let tokenCache: Token[] = [];
 const mementos: Map<Cell, string> = new Map();
 const cacheMap: Map<Cell, leaflet.Layer> = new Map();
 const board = new Board(TILE_DEGREES, NEIGHBORHOOD_SIZE);
+let path: Array<[number, number]> = [];
+let polylines: leaflet.Polyline[] = [];
 
 // --- Event Listeners ---
 
@@ -99,7 +115,6 @@ function spawnGeocache(cell: Cell) {
   );
 
   if (mementos.has(cell)) {
-    console.log("works");
     geocache.fromMemento(mementos.get(cell)!);
   }
 
@@ -142,6 +157,7 @@ function updateTokenMsg(token: Token, msg: string) {
 
 function moveMarker(direction: string) {
   const marker = playerMarker.getLatLng();
+  path.push([marker.lat, marker.lng]);
   switch (direction) {
     case "north":
       marker.lat += TILE_DEGREES;
@@ -160,6 +176,8 @@ function moveMarker(direction: string) {
       break;
   }
   playerMarker.setLatLng(marker);
+  path.push([marker.lat, marker.lng]);
+  polylines.push(leaflet.polyline(path, { color: "red" }).addTo(map));
   map.setView(marker);
   window.dispatchEvent(new Event(GAME_STATE_CHANGED));
 }
@@ -199,6 +217,7 @@ function createCollectButton(
     const toAdd: Token = { cell, serial };
     tokenCache.push(toAdd);
     updateTokenMsg(toAdd, ADD);
+    mementos.set(cell, geocache.toMemento());
     updateStatusPanel();
     e.stopPropagation();
     button.remove();
@@ -217,7 +236,25 @@ function createDepositButton(container: HTMLDivElement, geocache: Geocache) {
         geocache.toMemento();
       const depositedToken = tokenCache.pop()!;
       updateTokenMsg(depositedToken, DEPOSIT);
+      mementos.set(geocache.cell, geocache.toMemento());
       createCollectButton(container, depositedToken.serial, geocache);
     } else tokenMsg.innerHTML = "No tokens to deposit";
   });
+}
+
+function reset() {
+  tokenCache = [];
+  path = [];
+  polylines.forEach((line) => {
+    line.remove();
+  });
+  playerMarker.setLatLng(MERRILL_CLASSROOM);
+  map.setView(MERRILL_CLASSROOM);
+  console.log(map.getCenter());
+  board.clear();
+  cacheMap.clear();
+  mementos.clear();
+  points = 0;
+  updateStatusPanel();
+  window.dispatchEvent(new Event(GAME_STATE_CHANGED));
 }

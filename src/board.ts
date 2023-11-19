@@ -20,6 +20,10 @@ export class Board {
     this.knownCells = new Map();
   }
 
+  clear() {
+    this.knownCells.clear();
+  }
+
   private getCanonicalCell(cell: Cell): Cell {
     const { i, j } = cell;
     const key = [i, j].toString();
