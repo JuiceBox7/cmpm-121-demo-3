@@ -95,6 +95,7 @@ const mementos: Map<Cell, string> = new Map();
 const cacheMap: Map<Cell, leaflet.Layer> = new Map();
 const board = new Board(TILE_DEGREES, NEIGHBORHOOD_SIZE);
 let path: Array<[number, number]> = [];
+path.push([MERRILL_CLASSROOM.lat, MERRILL_CLASSROOM.lng]);
 let polylines: leaflet.Polyline[] = [];
 
 // --- Event Listeners ---
@@ -157,7 +158,6 @@ function updateTokenMsg(token: Token, msg: string) {
 
 function moveMarker(direction: string) {
   const marker = playerMarker.getLatLng();
-  path.push([marker.lat, marker.lng]);
   switch (direction) {
     case "north":
       marker.lat += TILE_DEGREES;
@@ -244,17 +244,18 @@ function createDepositButton(container: HTMLDivElement, geocache: Geocache) {
 
 function reset() {
   tokenCache = [];
+  playerMarker.setLatLng(path[0]);
+  map.setView(path[0]);
   path = [];
+  path.push([MERRILL_CLASSROOM.lat, MERRILL_CLASSROOM.lng]);
   polylines.forEach((line) => {
     line.remove();
   });
-  playerMarker.setLatLng(MERRILL_CLASSROOM);
-  map.setView(MERRILL_CLASSROOM);
   console.log(map.getCenter());
   board.clear();
-  cacheMap.clear();
   mementos.clear();
   points = 0;
   updateStatusPanel();
+  tokenMsg.innerHTML = "";
   window.dispatchEvent(new Event(GAME_STATE_CHANGED));
 }
